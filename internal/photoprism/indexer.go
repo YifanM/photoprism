@@ -34,37 +34,27 @@ func NewIndexer(originalsPath string, tensorFlow *TensorFlow, db *gorm.DB) *Inde
 	return instance
 }
 
-func (i *Indexer) GetImageTags(jpeg *MediaFile, media *MediaFile, filename string) (results []*Tag) {
+func (i *Indexer) GetImageTags(jpeg *MediaFile, filename string) (results []*Tag) {
 	tags, err := i.tensorFlow.GetImageTagsFromFile(jpeg.filename)
 
-	// cmd := exec.Command("face_recognition", "/go/src/github.com/photoprism/photoprism/assets/photos/training/", "/go/src/github.com/photoprism/photoprism/assets/photos/originals/2018/10/")
-	cmd := exec.Command("pwd")
+	// Execute face_recognition tool from command line
+	cmd := exec.Command("face_recognition", "/go/src/github.com/photoprism/photoprism/assets/photos/training/", "/go/src/github.com/photoprism/photoprism/assets/photos/originals/2018/10/")
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	cmd_err := cmd.Run()
-
-	if cmd_err != nil {
-		fmt.Printf("cmd err ------------ %s", cmd_err)
-	}
-
-	fmt.Printf("out.string ------------ %s", out.String())
+	cmd.Run()
 
 	lines := strings.Split(out.String(), "\n")
 
+	// Take output from face_recognition tool from std_out and add the person's name as a tag
 	for _, line := range lines {
-		fmt.Printf("line ------------ %s\n", line)
 		words := strings.Split(line, ",")
 		line_filename := words[0]
-		fmt.Printf("line file name ------------ %s\n", line_filename)
-		// if line_filename != filename { continue }
-		// person_name := words[1]
-		// fmt.Printf("line ------------ %s\n", person_name)
-		// if person_name == "unknown_person" { break }
-		results = i.appendTag(results, "OBAMAAAAAAA")
+		if line_filename != filename { continue }
+		person_name := words[1]
+		if person_name == "unknown_person" { break }
+		results = i.appendTag(results, person_name)
 		break
 	}
-
-	// fmt.Printf("filename : ------------ %s", media.GetRelativeFilename("/go/src/github.com/photoprism/photoprism/assets/photos/import"))
 
 	if err != nil {
 		return results
@@ -125,7 +115,7 @@ func (i *Indexer) IndexMediaFile(mediaFile *MediaFile) string {
 			photo.PhotoColors = strings.Join(colorNames, ", ")
 
 			// Tags (TensorFlow)
-			tags = i.GetImageTags(jpeg, mediaFile, relativeFileName)
+			tags = i.GetImageTags(jpeg, relativeFileName)
 		}
 
 		if location, err := mediaFile.GetLocation(); err == nil {
