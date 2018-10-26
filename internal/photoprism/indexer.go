@@ -6,10 +6,11 @@ import (
 	. "github.com/photoprism/photoprism/internal/models"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
-	// "bytes"
+	"bytes"
 )
 
 const (
@@ -36,12 +37,17 @@ func NewIndexer(originalsPath string, tensorFlow *TensorFlow, db *gorm.DB) *Inde
 func (i *Indexer) GetImageTags(jpeg *MediaFile, media *MediaFile, filename string) (results []*Tag) {
 	tags, err := i.tensorFlow.GetImageTagsFromFile(jpeg.filename)
 
-	// cmd := os.exec.Command("face_recognition", "/go/src/github.com/photoprism/photoprism/assets/photos/training/", "/go/src/github.com/photoprism/photoprism/assets/photos/originals/2018/10/")
-	// var out bytes.Buffer
-	// cmd.Stdout = &out
-	// cmd_err := cmd.Run()
+	// cmd := exec.Command("face_recognition", "/go/src/github.com/photoprism/photoprism/assets/photos/training/", "/go/src/github.com/photoprism/photoprism/assets/photos/originals/2018/10/")
+	cmd := exec.Command("pwd")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd_err := cmd.Run()
 
-	// fmt.Printf("------------ %s", out.String())
+	if cmd_err != nil {
+		fmt.Printf("cmd err ------------ %s", cmd_err)
+	}
+
+	fmt.Printf("out.string ------------ %s", out.String())
 
 	lines := strings.Split(out.String(), "\n")
 
@@ -50,11 +56,11 @@ func (i *Indexer) GetImageTags(jpeg *MediaFile, media *MediaFile, filename strin
 		words := strings.Split(line, ",")
 		line_filename := words[0]
 		fmt.Printf("line file name ------------ %s\n", line_filename)
-		if line_filename != filename { continue }
-		person_name := words[1]
-		fmt.Printf("line ------------ %s\n", person_name)
-		if person_name == "unknown_person" { break }
-		results = i.appendTag(results, person_name)
+		// if line_filename != filename { continue }
+		// person_name := words[1]
+		// fmt.Printf("line ------------ %s\n", person_name)
+		// if person_name == "unknown_person" { break }
+		results = i.appendTag(results, "OBAMAAAAAAA")
 		break
 	}
 
