@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	// "bytes"
 )
 
 const (
@@ -32,8 +33,32 @@ func NewIndexer(originalsPath string, tensorFlow *TensorFlow, db *gorm.DB) *Inde
 	return instance
 }
 
-func (i *Indexer) GetImageTags(jpeg *MediaFile) (results []*Tag) {
+func (i *Indexer) GetImageTags(jpeg *MediaFile, media *MediaFile, filename string) (results []*Tag) {
 	tags, err := i.tensorFlow.GetImageTagsFromFile(jpeg.filename)
+
+	// cmd := os.exec.Command("face_recognition", "/go/src/github.com/photoprism/photoprism/assets/photos/training/", "/go/src/github.com/photoprism/photoprism/assets/photos/originals/2018/10/")
+	// var out bytes.Buffer
+	// cmd.Stdout = &out
+	// cmd_err := cmd.Run()
+
+	// fmt.Printf("------------ %s", out.String())
+
+	lines := strings.Split(out.String(), "\n")
+
+	for _, line := range lines {
+		fmt.Printf("line ------------ %s\n", line)
+		words := strings.Split(line, ",")
+		line_filename := words[0]
+		fmt.Printf("line file name ------------ %s\n", line_filename)
+		if line_filename != filename { continue }
+		person_name := words[1]
+		fmt.Printf("line ------------ %s\n", person_name)
+		if person_name == "unknown_person" { break }
+		results = i.appendTag(results, person_name)
+		break
+	}
+
+	// fmt.Printf("filename : ------------ %s", media.GetRelativeFilename("/go/src/github.com/photoprism/photoprism/assets/photos/import"))
 
 	if err != nil {
 		return results
@@ -94,7 +119,7 @@ func (i *Indexer) IndexMediaFile(mediaFile *MediaFile) string {
 			photo.PhotoColors = strings.Join(colorNames, ", ")
 
 			// Tags (TensorFlow)
-			tags = i.GetImageTags(jpeg)
+			tags = i.GetImageTags(jpeg, mediaFile, relativeFileName)
 		}
 
 		if location, err := mediaFile.GetLocation(); err == nil {
@@ -132,15 +157,22 @@ func (i *Indexer) IndexMediaFile(mediaFile *MediaFile) string {
 
 		photo.Tags = tags
 
-		if photo.PhotoTitle == "" {
-			if len(photo.Tags) > 0 { // TODO: User defined title format
-				photo.PhotoTitle = fmt.Sprintf("%s / %s", strings.Title(photo.Tags[0].TagLabel), mediaFile.GetDateCreated().Format("2006"))
-			} else if photo.Country != nil && photo.Country.CountryName != "" {
-				photo.PhotoTitle = fmt.Sprintf("%s / %s", strings.Title(photo.Country.CountryName), mediaFile.GetDateCreated().Format("2006"))
-			} else {
-				photo.PhotoTitle = fmt.Sprintf("Unknown / %s", mediaFile.GetDateCreated().Format("2006"))
-			}
-		}
+		var photoTitle string 
+		photoTitle = ""
+
+		for _, element := range photo.Tags { photoTitle += element.TagLabel }
+
+		photo.PhotoTitle = fmt.Sprintf("%s", photoTitle)
+
+		// if photo.PhotoTitle == "" {
+		// 	if len(photo.Tags) > 0 { // TODO: User defined title format
+		// 		photo.PhotoTitle = fmt.Sprintf("%s / %s", strings.Title(photo.Tags[0].TagLabel), mediaFile.GetDateCreated().Format("2006"))
+		// 	} else if photo.Country != nil && photo.Country.CountryName != "" {
+				
+		// 	} else {
+		// 		photo.PhotoTitle = fmt.Sprintf("Unknown / %s", mediaFile.GetDateCreated().Format("2006"))
+		// 	}
+		// }
 
 		photo.Camera = NewCamera(mediaFile.GetCameraModel(), mediaFile.GetCameraMake()).FirstOrCreate(i.db)
 		photo.Lens = NewLens(mediaFile.GetLensModel(), mediaFile.GetLensMake()).FirstOrCreate(i.db)
@@ -207,6 +239,8 @@ func (i *Indexer) IndexMediaFile(mediaFile *MediaFile) string {
 		file.FileHeight = mediaFile.GetHeight()
 		file.FileAspectRatio = mediaFile.GetAspectRatio()
 	}
+
+
 
 	if fileQuery.Error == nil {
 		i.db.Save(&file)
